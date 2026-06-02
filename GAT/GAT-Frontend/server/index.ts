@@ -41,7 +41,7 @@ app.use(compression());
 
 // C. CORS
 app.use(cors({
-  origin: true, // Allow any origin in development/codespaces
+  origin: 'https://gat-new.vercel.app', // Allow any origin in development/codespaces
   credentials: true
 }));
 
