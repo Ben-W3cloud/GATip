@@ -118,12 +118,14 @@ function useArbitrageScanner(
 
   const wsRef = useRef<WebSocket | null>(null);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const updateCountRef = useRef(0);
+  // removed updateCountRef auto-clear behavior to display incoming opportunities live
 
   const isRunningRef = useRef(isRunning);
   const filtersRef = useRef(filters);
   const minProfitRef = useRef(minProfit);
   const hasInitializedFilters = useRef(false);
+
+  const [lastUpdate, setLastUpdate] = useState<number | null>(null);
 
   const closeReasonRef = useRef<"manual" | "filter" | "error" | "unmount" | "none">("none");
   // const isFirstFilterRun = useRef(true);
@@ -232,15 +234,8 @@ function useArbitrageScanner(
 
       console.log("[WS] Opportunities in message:", incoming.length);
 
-      updateCountRef.current += 1;
-      console.log("[WS] Message counter:", updateCountRef.current);
-
-      if (updateCountRef.current >= 3) {
-        console.log("[WS] Clearing table after 3 updates.");
-        updateCountRef.current = 0;
-        setFoundOpps([]);
-        return;
-      }
+      // mark last update time and merge incoming opportunities
+      setLastUpdate(Date.now());
 
       if (incoming.length > 0) {
         setFoundOpps((prev) => {
@@ -404,7 +399,6 @@ function useArbitrageScanner(
 
     console.log("[WS] User started the scanner.");
     closeReasonRef.current = "none";
-    updateCountRef.current = 0;
     setFoundOpps([]);
     setIsRestarting (false);
     setIsRunning(true);
@@ -419,6 +413,7 @@ function useArbitrageScanner(
     foundOpps,
     filters,
     setFilters,
+    lastUpdate,
   };
 }
 
@@ -580,7 +575,12 @@ export default function Arbitrage() {
                 </Badge>
               )}
             </h1>
-            <p className="text-slate-400 text-xs mt-1">Real-time cross-exchange opportunity detector.</p>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-slate-400 text-xs">Real-time cross-exchange opportunity detector.</p>
+              {scanner.lastUpdate && (
+                <span className="text-xs text-slate-400">Updated {new Date(scanner.lastUpdate).toLocaleTimeString()}</span>
+              )}
+            </div>
           </div>
 
           <div className="flex gap-3 w-full md:w-auto relative">
