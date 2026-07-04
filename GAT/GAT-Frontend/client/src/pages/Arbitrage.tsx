@@ -118,7 +118,8 @@ function useArbitrageScanner(
 
   const wsRef = useRef<WebSocket | null>(null);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // removed updateCountRef auto-clear behavior to display incoming opportunities live
+  // message counter for optional auto-clear behavior
+  const updateCountRef = useRef(0);
 
   const isRunningRef = useRef(isRunning);
   const filtersRef = useRef(filters);
@@ -126,6 +127,7 @@ function useArbitrageScanner(
   const hasInitializedFilters = useRef(false);
 
   const [lastUpdate, setLastUpdate] = useState<number | null>(null);
+  const [clearAfterMessages, setClearAfterMessages] = useState<number>(2); // 2 = constant auto-clear after 2 messages
 
   const closeReasonRef = useRef<"manual" | "filter" | "error" | "unmount" | "none">("none");
   // const isFirstFilterRun = useRef(true);
@@ -236,6 +238,17 @@ function useArbitrageScanner(
 
       // mark last update time and merge incoming opportunities
       setLastUpdate(Date.now());
+
+      // increment message counter and optionally clear after threshold
+      if (clearAfterMessages > 0) {
+        updateCountRef.current += 1;
+        if (updateCountRef.current >= clearAfterMessages) {
+          console.log(`[WS] Clearing table after ${updateCountRef.current} messages (threshold ${clearAfterMessages}).`);
+          updateCountRef.current = 0;
+          setFoundOpps([]);
+          return;
+        }
+      }
 
       if (incoming.length > 0) {
         setFoundOpps((prev) => {
@@ -414,6 +427,7 @@ function useArbitrageScanner(
     filters,
     setFilters,
     lastUpdate,
+    clearAfterMessages,
   };
 }
 
@@ -772,7 +786,7 @@ export default function Arbitrage() {
                                 ${opp.buy_price} / ${opp.sell_price}
                               </td>
                               <td className="p-4 text-right font-700 text-green-400">
-                                +{(opp.profit_percent * 100).toFixed(2)}%
+                                +{(opp.profit_percent)}%
                               </td>
                               <td className="p-4 text-right">
                                 <Button
