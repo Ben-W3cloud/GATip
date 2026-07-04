@@ -118,8 +118,6 @@ function useArbitrageScanner(
 
   const wsRef = useRef<WebSocket | null>(null);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // message counter for optional auto-clear behavior
-  const updateCountRef = useRef(0);
 
   const isRunningRef = useRef(isRunning);
   const filtersRef = useRef(filters);
@@ -127,7 +125,6 @@ function useArbitrageScanner(
   const hasInitializedFilters = useRef(false);
 
   const [lastUpdate, setLastUpdate] = useState<number | null>(null);
-  const [clearAfterMessages, setClearAfterMessages] = useState<number>(2); // 2 = constant auto-clear after 2 messages
 
   const closeReasonRef = useRef<"manual" | "filter" | "error" | "unmount" | "none">("none");
   // const isFirstFilterRun = useRef(true);
@@ -238,17 +235,6 @@ function useArbitrageScanner(
 
       // mark last update time and merge incoming opportunities
       setLastUpdate(Date.now());
-
-      // increment message counter and optionally clear after threshold
-      if (clearAfterMessages > 0) {
-        updateCountRef.current += 1;
-        if (updateCountRef.current >= clearAfterMessages) {
-          console.log(`[WS] Clearing table after ${updateCountRef.current} messages (threshold ${clearAfterMessages}).`);
-          updateCountRef.current = 0;
-          setFoundOpps([]);
-          return;
-        }
-      }
 
       if (incoming.length > 0) {
         setFoundOpps((prev) => {
@@ -427,7 +413,6 @@ function useArbitrageScanner(
     filters,
     setFilters,
     lastUpdate,
-    clearAfterMessages,
   };
 }
 
@@ -461,6 +446,22 @@ export default function Arbitrage() {
   });
 
   const scanner         = useArbitrageScanner( exchangeList, symbolList);
+  const [lastUpdateAge, setLastUpdateAge] = useState<number>(0);
+
+  useEffect(() => {
+    if (!scanner.lastUpdate) {
+      setLastUpdateAge(0);
+      return;
+    }
+
+    const updateAge = () => {
+      setLastUpdateAge(Math.max(0, Math.floor((Date.now() - scanner.lastUpdate) / 1000)));
+    };
+
+    updateAge();
+    const timer = window.setInterval(updateAge, 1000);
+    return () => window.clearInterval(timer);
+  }, [scanner.lastUpdate]);
 
   // Forms & Modals
   const [tradeModalOpen, setTradeModalOpen]   = useState(false);
@@ -591,9 +592,17 @@ export default function Arbitrage() {
             </h1>
             <div className="flex items-center gap-3 mt-1">
               <p className="text-slate-400 text-xs">Real-time cross-exchange opportunity detector.</p>
-              {scanner.lastUpdate && (
-                <span className="text-xs text-slate-400">Updated {new Date(scanner.lastUpdate).toLocaleTimeString()}</span>
-              )}
+              {scanner.lastUpdate ? (
+                <span className="inline-flex items-center gap-2 text-xs text-slate-400">
+                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Last updated: {lastUpdateAge}s ago
+                </span>
+              ) : scanner.isRunning ? (
+                <span className="inline-flex items-center gap-2 text-xs text-slate-400">
+                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-slate-500" />
+                  Waiting for first update...
+                </span>
+              ) : null}
             </div>
           </div>
 
