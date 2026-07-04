@@ -3,14 +3,12 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useLocation } from 'wouter';
 import { buildUrl } from '@/lib/api';
-import { Header } from '@/components/Header';
-import { useTheme } from '@/hooks/useTheme'; // Ensure this hook exists or mock it
+import { Layout } from '@/components/Layout';
 import { useToast } from '@/hooks/use-toast'; // Shadcn toast hook
 import {
-  User as UserIcon, Bell, Shield, Palette, CreditCard, LogOut,
-  Sun, Moon, Monitor, Check, Mail, AtSign, KeyRound, Loader2
+  User as UserIcon, LogOut,
+  Check, Mail, AtSign, KeyRound, Loader2
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -44,10 +42,6 @@ type PasswordFormValues = z.infer<typeof passwordSchema>;
 // --- Constants ---
 const NAV_ITEMS = [
   { name: 'Account', icon: UserIcon },
-  { name: 'Notifications', icon: Bell },
-  { name: 'Privacy & Safety', icon: Shield },
-  { name: 'Appearance', icon: Palette },
-  { name: 'Billing', icon: CreditCard },
 ] as const;
 
 type TabName = typeof NAV_ITEMS[number]['name'];
@@ -56,9 +50,7 @@ type TabName = typeof NAV_ITEMS[number]['name'];
 // MAIN COMPONENT
 // ──────────────────────────────────────────────────────────────
 export default function Settings() {
-  const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabName>('Account');
-  const [, setLocation] = useLocation();
 
   const { data: user, isLoading } = useQuery<UserProfile>({
     queryKey: ['/auth/user-info'],
@@ -82,8 +74,8 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-white font-sans selection:bg-primary/30">
-      <Header />
+    <Layout>
+      <div className="min-h-screen bg-background text-white font-sans selection:bg-primary/30">
 
       <div className="max-w-6xl mx-auto px-4 py-8 lg:px-8 lg:py-12">
         <h1 className="text-3xl font-bold mb-8 font-grotesk text-white">Settings</h1>
@@ -131,10 +123,6 @@ export default function Settings() {
               ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   {activeTab === 'Account' && <AccountTab user={user} />}
-                  {activeTab === 'Notifications' && <ComingSoonTab title="Notifications" icon={Bell} />}
-                  {activeTab === 'Privacy & Safety' && <ComingSoonTab title="Privacy & Safety" icon={Shield} />}
-                  {activeTab === 'Appearance' && <AppearanceTab theme={theme} setTheme={setTheme} />}
-                  {activeTab === 'Billing' && <ComingSoonTab title="Billing" icon={CreditCard} />}
                 </div>
               )}
             </div>
@@ -142,6 +130,7 @@ export default function Settings() {
         </div>
       </div>
     </div>
+    </Layout>
   );
 }
 
@@ -292,73 +281,4 @@ function AccountTab({ user }: { user?: UserProfile }) {
   );
 }
 
-// ──────────────────────────────────────────────────────────────
-// TAB: APPEARANCE
-// ──────────────────────────────────────────────────────────────
-function AppearanceTab({ theme, setTheme }: { theme: 'light' | 'dark' | 'system'; setTheme: (t: any) => void }) {
-  const themes = [
-    { value: 'light', icon: Sun, label: 'Light Mode', desc: 'Classic bright look' },
-    { value: 'dark', icon: Moon, label: 'Dark Mode', desc: 'Easy on the eyes' },
-    { value: 'system', icon: Monitor, label: 'System Default', desc: 'Syncs with OS' },
-  ] as const;
 
-  return (
-    <div className="space-y-8">
-      <div className="border-b border-border pb-6">
-        <h2 className="text-2xl font-bold text-white mb-2 font-grotesk leading-none">Appearance</h2>
-        <p className="text-slate-400 text-sm font-medium mt-1">Customize how GAT looks on your device.</p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        {themes.map(({ value, icon: Icon, label, desc }) => (
-          <button
-            key={value}
-            onClick={() => setTheme(value)}
-            className={cn(
-              "relative group p-6 rounded-xl border-2 text-left transition-all duration-200",
-              theme === value
-                ? "border-primary bg-primary/5 shadow-md shadow-primary/5"
-                : "border-border hover:border-primary/45 bg-secondary/20"
-            )}
-          >
-            <div className={cn(
-              "w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors",
-              theme === value ? "bg-primary text-background" : "bg-secondary text-slate-400 group-hover:text-white group-hover:bg-secondary/80 border border-border"
-            )}>
-              <Icon className="w-6 h-6" />
-            </div>
-            
-            <p className={cn("font-bold text-lg mb-1 font-grotesk", theme === value ? "text-white" : "text-slate-200")}>
-              {label}
-            </p>
-            <p className="text-sm text-slate-500 group-hover:text-slate-400 font-medium">{desc}</p>
-            
-            {theme === value && (
-              <div className="absolute top-4 right-4 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg text-background">
-                <Check className="w-3.5 h-3.5" />
-              </div>
-            )}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────
-// TAB: COMING SOON
-// ──────────────────────────────────────────────────────────────
-function ComingSoonTab({ title, icon: Icon }: { title: string, icon: any }) {
-  return (
-    <div className="h-[400px] flex flex-col items-center justify-center text-center">
-      <div className="bg-secondary/20 border border-dashed border-border/80 rounded-xl w-24 h-24 flex items-center justify-center mb-6 text-slate-500">
-        <Icon className="w-10 h-10" />
-      </div>
-      <h3 className="text-2xl font-bold mb-2 text-white font-grotesk leading-none">{title}</h3>
-      <p className="text-slate-500 max-w-sm mx-auto leading-relaxed text-sm font-semibold">
-        This module is currently under active development. 
-        <br />Check back in future updates!
-      </p>
-    </div>
-  );
-}

@@ -1,19 +1,26 @@
-import { useMemo, useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { buildUrl } from "@/lib/api";
-import { 
-  Wallet, TrendingUp, Activity, Trophy, ArrowUpRight, 
-  ArrowDownLeft, Bell, AlertCircle, Loader2 
+import {
+  Activity,
+  AlertCircle,
+  ArrowRight,
+  ArrowRightLeft,
+  Bell,
+  Calculator,
+  LineChart,
+  Loader2,
+  Play,
+  TrendingUp,
+  Wallet,
+  Zap,
 } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils"; // Assuming you have a class merger utility
-
-// ──────────────────────────────────────────────────────────────
-// 1. TYPES (Move to src/types/api.ts in real project)
-// ──────────────────────────────────────────────────────────────
+import { Button } from "@/components/ui/button";
+import { buildUrl } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 interface UserInfo {
   status: string;
@@ -47,32 +54,11 @@ interface Notification {
   read: boolean;
 }
 
-interface WalletAsset {
-  name: string;
-  code: string;
-  balance: number;
-  color: string;
-  link: string;
-}
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value || 0);
 
-// ──────────────────────────────────────────────────────────────
-// 2. UTILS & FORMATTERS
-// ──────────────────────────────────────────────────────────────
+const formatPercent = (value: number) => `${Number(value || 0).toFixed(0)}%`;
 
-const formatCurrency = (value: number) => 
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
-
-const formatPercent = (value: number) => 
-  new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1 }).format(value / 100);
-
-const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good Morning";
-  if (hour < 18) return "Good Afternoon";
-  return "Good Evening";
-};
-
-// Robust Fetcher with 401 handling
 const authenticatedFetcher = async (context: { queryKey: readonly unknown[]; signal?: AbortSignal }) => {
   const { queryKey, signal } = context;
   const [path] = queryKey as [string];
@@ -81,9 +67,9 @@ const authenticatedFetcher = async (context: { queryKey: readonly unknown[]; sig
   if (!token) throw new Error("UNAUTHORIZED");
 
   const res = await fetch(buildUrl(path), {
-    headers: { 
+    headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}` 
+      Authorization: `Bearer ${token}`,
     },
     signal,
   });
@@ -101,84 +87,78 @@ const authenticatedFetcher = async (context: { queryKey: readonly unknown[]; sig
   return res.json();
 };
 
-// ──────────────────────────────────────────────────────────────
-// 3. SUB-COMPONENTS
-// ──────────────────────────────────────────────────────────────
-
-const StatCard = ({ 
-  title, 
-  value, 
-  icon: Icon, 
-  trend, 
-  isLoading, 
-  colorClass 
-}: { 
-  title: string; 
-  value: string | number; 
-  icon: any; 
-  trend?: React.ReactNode; 
+function StatCard({ title, value, caption, trend, icon: Icon, isLoading }: {
+  title: string;
+  value: string | number;
+  caption: string;
+  trend?: string;
+  icon: React.ElementType;
   isLoading: boolean;
-  colorClass: string; 
-}) => (
-  <Card className="bg-card border border-border p-5 rounded-xl transition-all hover:border-primary/40 relative overflow-hidden shadow-lg group">
-    <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-primary/5 -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-300" />
-    <div className="flex items-start justify-between relative">
-      <div className="flex-1">
-        <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider font-grotesk mb-1">{title}</h3>
-        {isLoading ? (
-          <Skeleton className="h-8 w-3/4 bg-secondary" />
-        ) : (
-          <p className="text-white text-2xl font-grotesk font-700 tracking-tight mt-1">{value}</p>
-        )}
-        {trend && <div className="mt-2.5 flex items-center font-grotesk text-xs">{trend}</div>}
-      </div>
-      {Icon && (
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10 border border-primary/20 shrink-0 shadow-sm", colorClass.split(" ")[1] || "text-primary")}>
-          <Icon className="w-5 h-5" />
-        </div>
-      )}
-    </div>
-  </Card>
-);
-
-const TransactionItem = ({ trade }: { trade: Trade }) => {
-  const pnl = Number(trade.profit_loss);
-  const isProfit = pnl >= 0;
-
+}) {
   return (
-    <div className="group flex items-center justify-between p-3.5 rounded-xl bg-secondary/30 hover:bg-secondary/60 border border-transparent hover:border-border transition-all font-grotesk">
-      <div className="flex items-center gap-3">
-        <div className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-          trade.side === 'BUY' ? "bg-primary/10 text-primary border border-primary/20" : "bg-destructive/10 text-destructive border border-destructive/20"
-        )}>
-          {trade.side === 'BUY' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
-        </div>
+    <Card className="group relative overflow-hidden rounded-xl border-border bg-card p-5 shadow-lg transition-colors hover:border-primary/35">
+      <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-full bg-primary/5 transition-transform group-hover:scale-110" />
+      <div className="relative flex items-start justify-between gap-4">
         <div>
-          <p className="text-white font-700 text-sm leading-none mb-1">{trade.symbol}</p>
-          <span className={cn("text-[9px] font-700 px-1.5 py-0.5 rounded uppercase tracking-wider block w-fit leading-none", trade.side === 'BUY' ? "text-primary bg-primary/10" : "text-destructive bg-destructive/10")}>
-            {trade.side}
+          <p className="font-grotesk text-xs font-bold uppercase tracking-wider text-slate-400">{title}</p>
+          {isLoading ? <Skeleton className="mt-3 h-8 w-28 bg-secondary" /> : <p className="mt-2 font-grotesk text-3xl font-bold text-white">{value}</p>}
+          <p className="mt-1 text-sm text-slate-400">{caption}</p>
+          {trend && <p className="mt-3 text-xs font-bold text-green-400">{trend}</p>}
+        </div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ModuleCard({ title, value, caption, icon: Icon, href, tone }: {
+  title: string;
+  value: string;
+  caption: string;
+  icon: React.ElementType;
+  href: string;
+  tone: string;
+}) {
+  return (
+    <Link href={href}>
+      <Card className="group cursor-pointer rounded-xl border-border bg-card p-5 shadow-lg transition-all hover:-translate-y-0.5 hover:border-primary/35">
+        <div className="mb-5 flex items-start justify-between">
+          <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl border", tone)}>
+            <Icon className="h-5 w-5" />
+          </div>
+          <span className="rounded-full bg-secondary px-3 py-1 font-grotesk text-xs font-bold text-slate-400">
+            <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-slate-500" /> Stopped
           </span>
         </div>
+        <h3 className="font-grotesk text-base font-bold text-white">{title}</h3>
+        <p className="mt-2 font-grotesk text-3xl font-bold text-white">{value}</p>
+        <div className="mt-4 flex items-center justify-between text-sm text-slate-400">
+          <span>{caption}</span>
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+function TradeRow({ trade }: { trade: Trade }) {
+  const pnl = Number(trade.profit_loss || 0);
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-border/50 bg-secondary/25 px-3 py-3">
+      <div>
+        <p className="font-grotesk text-sm font-bold text-white">{trade.symbol}</p>
+        <p className="text-xs text-slate-500">{trade.side} - {trade.status}</p>
       </div>
-      <div className="text-right">
-        <p className={cn("text-sm font-700 font-mono", isProfit ? "text-green-400" : "text-destructive")}>
-          {isProfit ? '+' : ''}{formatCurrency(pnl)}
-        </p>
-        <p className="text-slate-500 text-[9px] uppercase font-bold tracking-wider mt-0.5">{trade.status}</p>
-      </div>
+      <p className={cn("font-mono text-sm font-bold", pnl >= 0 ? "text-green-400" : "text-destructive")}>{pnl >= 0 ? "+" : ""}{formatCurrency(pnl)}</p>
     </div>
   );
-};
-
-// ──────────────────────────────────────────────────────────────
-// 4. MAIN COMPONENT
-// ──────────────────────────────────────────────────────────────
+}
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
 
-  // --- DATA FETCHING ---
   const { data: userInfo, isLoading: userLoading, error: userError } = useQuery<UserInfo>({
     queryKey: ["/auth/user-info"],
     queryFn: authenticatedFetcher,
@@ -195,14 +175,10 @@ export default function Dashboard() {
     queryFn: authenticatedFetcher,
   });
 
-  // --- AUTH GUARD ---
   useEffect(() => {
-    if (userError?.message === "UNAUTHORIZED") {
-      setLocation("/login");
-    }
+    if (userError?.message === "UNAUTHORIZED") setLocation("/login");
   }, [userError, setLocation]);
 
-  // --- DERIVED STATE ---
   const stats = useMemo(() => {
     if (!userInfo) return null;
     return {
@@ -210,29 +186,20 @@ export default function Dashboard() {
       totalPnl: userInfo.total_pl || 0,
       activeTrades: userInfo.active_trade || 0,
       winRate: userInfo.win_rate || 0,
-      totalProfit: userInfo.total_profit || 0
+      totalProfit: userInfo.total_profit || 0,
     };
   }, [userInfo]);
 
-  const wallets: WalletAsset[] = useMemo(() => [
-    { name: "Arbitrage", code: "ARB", balance: userInfo?.balance_arb || 0, color: "bg-cyan-500 shadow-[0_0_15px_rgba(34,211,238,0.3)]", link: "/arbitrage" },
-    { name: "Forex", code: "FX", balance: userInfo?.balance_forex || 0, color: "bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]", link: "/forex" },
-    { name: "Futures", code: "FUT", balance: userInfo?.balance_fut || 0, color: "bg-violet-500 shadow-[0_0_15px_rgba(139,92,246,0.3)]", link: "/futures" },
-  ], [userInfo]);
-
   const isLoading = userLoading || tradesLoading;
 
-  // --- ERROR STATE ---
   if (userError && userError.message !== "UNAUTHORIZED") {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 font-grotesk">
-          <AlertCircle className="w-16 h-16 text-destructive mb-4 glow-primary" />
-          <h2 className="text-2xl font-bold text-white mb-2">Failed to load dashboard</h2>
-          <p className="text-slate-400 text-sm mb-6 max-w-sm">We couldn't fetch your account data. Please check your connection.</p>
-          <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/95 shadow-lg glow-primary transition-all">
-            Retry
-          </button>
+        <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 text-center">
+          <AlertCircle className="mb-4 h-14 w-14 text-destructive" />
+          <h2 className="font-grotesk text-2xl font-bold text-white">Failed to load dashboard</h2>
+          <p className="mt-2 max-w-sm text-sm text-slate-400">We could not fetch your account data. Please check your connection.</p>
+          <Button onClick={() => window.location.reload()} className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90">Retry</Button>
         </div>
       </Layout>
     );
@@ -240,164 +207,88 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
-        
-        {/* Header Greeting */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-grotesk font-700 text-white tracking-tight">
-            {getGreeting()}, <span className="text-primary glow-text">{userInfo?.name?.split(' ')[0] || 'Trader'}</span>
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">Here is what's happening with your portfolio today.</p>
+      <div className="mx-auto w-full max-w-[1500px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="font-grotesk text-3xl font-bold tracking-tight text-white">Dashboard</h1>
+            <p className="mt-1 text-sm text-slate-400">Welcome back - your system is online</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Zap className="mr-2 h-4 w-4" /> Execute Trade
+            </Button>
+            <Button variant="outline" className="border-primary/25 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary">
+              <Activity className="mr-2 h-4 w-4" /> GAT Platform v1.0
+            </Button>
+          </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard 
-            title="Total Balance" 
-            value={stats ? formatCurrency(stats.totalBalance) : "$0.00"} 
-            icon={Wallet} 
-            isLoading={isLoading}
-            colorClass="bg-primary/10 text-primary border-primary/20"
-            trend={stats && <span className="text-primary font-bold">Profit: {formatCurrency(stats.totalProfit)}</span>}
-          />
-          <StatCard 
-            title="Total P&L" 
-            value={stats ? formatCurrency(stats.totalPnl) : "$0.00"} 
-            icon={TrendingUp} 
-            isLoading={isLoading}
-            colorClass="bg-primary/10 text-primary border-primary/20"
-            trend={
-              <span className={cn("font-bold flex items-center gap-1", (stats?.totalPnl || 0) >= 0 ? "text-green-400" : "text-destructive")}>
-                {((stats?.totalPnl || 0) >= 0 ? '▲' : '▼')} All Time
-              </span>
-            }
-          />
-          <StatCard 
-            title="Active Trades" 
-            value={stats?.activeTrades || 0} 
-            icon={Activity} 
-            isLoading={isLoading}
-            colorClass="bg-primary/10 text-primary border-primary/20"
-          />
-          <StatCard 
-            title="Win Rate" 
-            value={stats ? formatPercent(stats.winRate) : "0%"} 
-            icon={Trophy} 
-            isLoading={isLoading}
-            colorClass="bg-primary/10 text-primary border-primary/20"
-          />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard title="Total Balance" value={stats ? formatCurrency(stats.totalBalance) : "$0.00"} caption="All wallets combined" trend="+5.2% this week" icon={Wallet} isLoading={isLoading} />
+          <StatCard title="Total Profit" value={stats ? formatCurrency(stats.totalProfit) : "$0.00"} caption="All-time earnings" trend="+12.4% this month" icon={LineChart} isLoading={isLoading} />
+          <StatCard title="Active Trades" value={stats?.activeTrades || 0} caption="Across all modules" icon={Activity} isLoading={isLoading} />
+          <StatCard title="Win Rate" value={stats ? formatPercent(stats.winRate) : "0%"} caption="Last 30 days" trend="+3% vs last month" icon={TrendingUp} isLoading={isLoading} />
         </div>
 
-        {/* Main Content Split */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* LEFT: Wallets Table */}
-          <div className="lg:col-span-8 space-y-6">
-            <Card className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
-              <div className="p-6 border-b border-border flex flex-row justify-between items-center font-grotesk">
-                <div>
-                  <h2 className="text-lg font-bold text-white leading-none">Assets</h2>
-                  <p className="text-slate-400 text-xs mt-1.5">Your portfolio distribution</p>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <ModuleCard title="Arbitrage Trading" value={formatCurrency(userInfo?.balance_arb || 0)} caption="L2 scanner and routing" href="/arbitrage" icon={ArrowRightLeft} tone="border-cyan-400/25 bg-cyan-400/10 text-cyan-300" />
+          <ModuleCard title="Futures Trading" value={formatCurrency(userInfo?.balance_fut || 0)} caption="Margin and positions" href="/futures" icon={TrendingUp} tone="border-violet-400/25 bg-violet-400/10 text-violet-300" />
+          <ModuleCard title="Forex Trading" value={formatCurrency(userInfo?.balance_forex || 0)} caption="ICT / Smart Money" href="/forex" icon={LineChart} tone="border-amber-400/25 bg-amber-400/10 text-amber-300" />
+        </div>
+
+        <button className="flex w-full items-center justify-between rounded-xl border border-border bg-card p-5 text-left shadow-lg transition-colors hover:border-primary/35">
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+              <Calculator className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-grotesk font-bold text-white">Trade Simulator</p>
+              <p className="text-sm text-slate-400">Calculate potential outcomes before going live</p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-slate-500" />
+        </button>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <Card className="rounded-xl border-border bg-card shadow-lg">
+            <div className="border-b border-border p-5">
+              <h2 className="font-grotesk text-lg font-bold text-white">Recent Trades</h2>
+            </div>
+            <div className="space-y-2 p-4">
+              {isLoading ? (
+                Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full bg-secondary" />)
+              ) : recentTrades.length === 0 ? (
+                <div className="flex min-h-44 flex-col items-center justify-center text-center text-slate-500">
+                  <Play className="mb-2 h-8 w-8 opacity-40" />
+                  <p className="text-sm">No recent trading activity.</p>
                 </div>
-                <Link href="/wallet" className="px-4 py-2 bg-secondary text-foreground text-xs font-semibold rounded-lg hover:bg-secondary/80 border border-border transition-colors">
-                  Manage Wallet
-                </Link>
-              </div>
+              ) : (
+                recentTrades.slice(0, 6).map((trade, idx) => <TradeRow key={trade.id || idx} trade={trade} />)
+              )}
+            </div>
+          </Card>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left font-grotesk">
-                  <thead className="bg-secondary/20 border-b border-border/50 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
-                    <tr>
-                      <th className="px-6 py-4">Asset</th>
-                      <th className="px-6 py-4 text-right">Balance</th>
-                      <th className="px-6 py-4 text-right">Value (USD)</th>
-                      <th className="px-6 py-4 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50 text-sm">
-                    {wallets.map((wallet) => (
-                      <tr key={wallet.code} className="group hover:bg-secondary/20 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0", wallet.color)}>
-                              {wallet.code.substring(0, 2)}
-                            </div>
-                            <div>
-                              <p className="text-white font-semibold text-sm leading-none mb-1">{wallet.name}</p>
-                              <p className="text-slate-500 text-xs tracking-wider leading-none">{wallet.code}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right text-slate-350 font-mono text-sm">
-                          {isLoading ? <Skeleton className="h-4 w-20 ml-auto bg-secondary" /> : formatCurrency(wallet.balance)}
-                        </td>
-                        <td className="px-6 py-4 text-right text-white font-bold font-mono text-sm">
-                          {isLoading ? <Skeleton className="h-4 w-20 ml-auto bg-secondary" /> : formatCurrency(wallet.balance)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <Link href={wallet.link} className="text-primary text-xs font-bold hover:glow-text hover:underline tracking-wider">
-                            TRADE
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          </div>
-
-          {/* RIGHT: Activity & Notifications */}
-          <div className="lg:col-span-4 space-y-6">
-            
-            {/* Recent Activity */}
-            <Card className="bg-card border border-border h-[400px] flex flex-col rounded-xl shadow-lg">
-              <div className="p-5 border-b border-border font-grotesk">
-                <h3 className="text-white font-bold text-sm">Recent Trades</h3>
-              </div>
-              <div className="p-4 flex-1 overflow-y-auto space-y-2">
-                {isLoading ? (
-                  Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-14 w-full bg-secondary rounded-xl" />)
-                ) : recentTrades.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-500 font-grotesk text-center">
-                    <Activity className="w-10 h-10 mb-2 opacity-25" />
-                    <p className="text-sm">No recent trading activity.</p>
-                  </div>
-                ) : (
-                  recentTrades.map((trade, idx) => <TransactionItem key={trade.id || idx} trade={trade} />)
-                )}
-              </div>
-            </Card>
-
-            {/* Notifications */}
-            <Card className="bg-card border border-border rounded-xl shadow-lg font-grotesk">
-              <div className="p-5 border-b border-border flex justify-between items-center">
-                <h3 className="text-white font-bold text-sm">Notifications</h3>
-                <Bell className="w-4 h-4 text-primary animate-pulse" />
-              </div>
-              <div className="p-4 space-y-4">
-                {notifications.length === 0 ? (
-                   <p className="text-slate-500 text-xs text-center py-4">You are all caught up!</p>
-                ) : (
-                  notifications.slice(0, 4).map((n, idx) => (
-                    <div key={n.id || idx} className="flex gap-3 group">
-                      <div className="flex-shrink-0 mt-1">
-                        <div className="w-2 h-2 rounded-full bg-primary ring-4 ring-primary/10 group-hover:ring-primary/20 transition-all"></div>
-                      </div>
-                      <div>
-                        <p className="text-slate-200 text-sm font-medium leading-none mb-1.5">{n.action}</p>
-                        <p className="text-slate-400 text-xs leading-relaxed line-clamp-2">{n.details}</p>
-                        <p className="text-slate-600 text-[10px] mt-1 font-mono">
-                          {n.created_at ? new Date(n.created_at).toLocaleDateString() : 'Today'}
-                        </p>
-                      </div>
+          <Card className="rounded-xl border-border bg-card shadow-lg">
+            <div className="flex items-center justify-between border-b border-border p-5">
+              <h2 className="font-grotesk text-lg font-bold text-white">Notifications</h2>
+              <Bell className="h-4 w-4 text-primary" />
+            </div>
+            <div className="space-y-4 p-5">
+              {notifications.length === 0 ? (
+                <p className="py-10 text-center text-sm text-slate-500">You are all caught up.</p>
+              ) : (
+                notifications.slice(0, 5).map((notification) => (
+                  <div key={notification.id} className="flex gap-3 rounded-lg border border-border/50 bg-secondary/20 p-3">
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-100">{notification.action}</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-slate-400">{notification.details}</p>
                     </div>
-                  ))
-                )}
-              </div>
-            </Card>
-
-          </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
         </div>
       </div>
     </Layout>

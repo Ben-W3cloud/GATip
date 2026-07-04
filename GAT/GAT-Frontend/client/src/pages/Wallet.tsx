@@ -95,32 +95,19 @@ const PortfolioHeader = ({ stats, onRefresh, isLoading }: { stats?: UserInfo, on
   const totalBalance = (stats?.balance_arb || 0) + (stats?.balance_forex || 0) + (stats?.balance_fut || 0);
 
   return (
-    <div className="relative overflow-hidden bg-card border border-border rounded-3xl p-8 sm:p-10 shadow-2xl group font-grotesk">
-      <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-105 transition-transform duration-500 pointer-events-none"></div>
-      <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-        <div>
-          <p className="text-slate-400 font-semibold mb-2 flex items-center gap-2 text-sm uppercase tracking-wider">
-            Total Portfolio Value
-            {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
-          </p>
-          <h2 className="text-4xl sm:text-6xl font-700 tracking-tight text-white glow-text">
-            {formatCurrency(totalBalance)}
-          </h2>
-          <div className="flex items-center gap-3 mt-4 text-xs font-semibold">
-            <Badge className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 font-bold px-3 py-1">
-              <TrendingUp className="w-3.5 h-3.5 mr-1" /> +8.09%
-            </Badge>
-            <span className="text-slate-500">Last 24h</span>
-          </div>
-        </div>
-        <Button variant="outline" size="sm" onClick={onRefresh} className="border-border bg-secondary hover:bg-secondary/80 text-foreground font-bold font-grotesk px-4 py-2 h-10 shadow-md">
-          <RefreshCw className={cn("w-4 h-4 mr-2 text-primary", isLoading && "animate-spin")} /> Refresh
-        </Button>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="font-grotesk">
+        <h1 className="text-3xl font-bold tracking-tight text-white">Wallet</h1>
+        <p className="mt-1 text-sm text-slate-400">
+          Total Balance: <span className="font-bold text-white">{formatCurrency(totalBalance)}</span>
+        </p>
       </div>
+      <Button onClick={onRefresh} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/10">
+        <RefreshCw className={cn("mr-2 h-4 w-4", isLoading && "animate-spin")} /> Refresh
+      </Button>
     </div>
   );
 };
-
 const ActionGrid = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -234,33 +221,52 @@ const ActionGrid = () => {
 
 const AccountsGrid = ({ stats }: { stats?: UserInfo }) => {
   const accounts = [
-    { name: "Arbitrage Wallet", code: "ARB", balance: stats?.balance_arb || 0, color: "text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 shadow-[0_0_12px_rgba(34,211,238,0.15)]" },
-    { name: "Forex Account", code: "FX", balance: stats?.balance_forex || 0, color: "text-amber-400 bg-amber-400/10 border border-amber-400/20 shadow-[0_0_12px_rgba(245,158,11,0.15)]" },
-    { name: "Futures Margin", code: "FUT", balance: stats?.balance_fut || 0, color: "text-violet-400 bg-violet-400/10 border border-violet-400/20 shadow-[0_0_12px_rgba(139,92,246,0.15)]" },
+    { name: "Arbitrage Wallet", code: "ARB", label: "Arbitrage", balance: stats?.balance_arb || 0, color: "text-cyan-300 bg-cyan-400/10 border-cyan-400/25" },
+    { name: "Futures Wallet", code: "FUT", label: "Futures", balance: stats?.balance_fut || 0, color: "text-violet-300 bg-violet-400/10 border-violet-400/25" },
+    { name: "Forex Wallet", code: "FX", label: "Forex", balance: stats?.balance_forex || 0, color: "text-amber-300 bg-amber-400/10 border-amber-400/25" },
+    { name: "Reserve Wallet", code: "RSV", label: "Reserve", balance: 0, color: "text-green-300 bg-green-400/10 border-green-400/25" },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
       {accounts.map((acc) => (
-        <Card key={acc.code} className="bg-card border-border p-6 flex flex-col justify-between hover:border-primary/45 transition-all duration-350 shadow-lg rounded-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-primary/5 -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-300 pointer-events-none" />
-          <div className="relative font-grotesk">
-            <div className="flex justify-between items-start mb-4">
-              <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm", acc.color)}>
-                {acc.code}
+        <Card key={acc.code} className="group relative overflow-hidden rounded-xl border-border bg-card p-5 shadow-lg transition-colors hover:border-primary/35">
+          <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-full bg-primary/5 transition-transform group-hover:scale-110" />
+          <div className="relative space-y-5 font-grotesk">
+            <div className="flex items-start gap-3">
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl border font-bold", acc.color)}>{acc.code}</div>
+              <div>
+                <h3 className="font-bold text-white">{acc.name}</h3>
+                <p className="text-xs text-slate-400">{acc.label}</p>
               </div>
-              <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">Active</Badge>
             </div>
-            <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{acc.name}</p>
-            <h3 className="text-2xl font-700 text-white mt-2 font-mono">{formatCurrency(acc.balance)}</h3>
+            <p className="text-3xl font-bold text-white">{formatCurrency(acc.balance)}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-secondary/60 p-3">
+                <p className="text-xs text-slate-400">Deposited</p>
+                <p className="text-sm font-bold text-white">{formatCurrency(acc.balance)}</p>
+              </div>
+              <div className="rounded-lg bg-secondary/60 p-3">
+                <p className="text-xs text-slate-400">Total Profit</p>
+                <p className="text-sm font-bold text-slate-300">0.00</p>
+              </div>
+            </div>
+            {acc.code === "RSV" ? (
+              <div className="rounded-lg border border-green-400/20 bg-green-400/10 p-3 text-xs text-green-300">
+                5% of all profits auto-allocated. Emergency buffer only.
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="flex-1 border-border bg-secondary/40 text-white hover:bg-secondary">Deposit</Button>
+                <Button size="sm" variant="outline" className="flex-1 border-border bg-secondary/40 text-white hover:bg-secondary">Withdraw</Button>
+              </div>
+            )}
           </div>
         </Card>
       ))}
     </div>
   );
 };
-
-
 interface DepositAddress {
   id: number;
   name: string;
@@ -492,7 +498,7 @@ export default function Wallet() {
   return (
     <Layout>
       <div className="min-h-screen bg-background text-foreground pb-20 font-sans">
-        <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        <div className="mx-auto w-full max-w-[1500px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
           
           <PortfolioHeader 
             stats={stats} 
@@ -503,7 +509,7 @@ export default function Wallet() {
           <ActionGrid />
           
           <div className="space-y-4">
-            <h3 className="text-lg font-bold px-1 font-grotesk text-white leading-none">Your Accounts</h3>
+            <h3 className="font-grotesk text-lg font-bold leading-none text-white">Wallets</h3>
             <AccountsGrid stats={stats} />
           </div>
 
@@ -569,3 +575,4 @@ export default function Wallet() {
     </Layout>
   );
 }
+

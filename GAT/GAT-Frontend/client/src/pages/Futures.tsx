@@ -178,8 +178,27 @@ export default function Futures() {
 
   return (
     <Layout>
-      <div className="w-full max-w-[1600px] mx-auto px-4 py-6 space-y-6">
+      <div className="mx-auto w-full max-w-[1500px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="flex items-center gap-3 font-grotesk text-3xl font-bold tracking-tight text-white">
+              <TrendingUp className="h-7 w-7 text-violet-400" /> Futures Trading
+            </h1>
+            <p className="mt-1 text-sm text-slate-400">Perpetuals, leverage, positions, and open orders</p>
+          </div>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+            Start Trading
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className="rounded-xl border-border bg-card p-5 shadow-lg transition-colors hover:border-primary/35"><p className="font-grotesk text-xs font-bold uppercase tracking-wider text-slate-400">Open Positions</p><p className="mt-2 font-grotesk text-3xl font-bold text-white">{POSITIONS.length}</p><p className="mt-1 text-sm text-slate-400">Live contracts</p></Card>
+          <Card className="rounded-xl border-border bg-card p-5 shadow-lg transition-colors hover:border-primary/35"><p className="font-grotesk text-xs font-bold uppercase tracking-wider text-slate-400">Total P&L</p><p className="mt-2 font-grotesk text-3xl font-bold text-white">$202.50</p><p className="mt-1 text-sm text-green-400">Across active positions</p></Card>
+          <Card className="rounded-xl border-border bg-card p-5 shadow-lg transition-colors hover:border-primary/35"><p className="font-grotesk text-xs font-bold uppercase tracking-wider text-slate-400">Open Orders</p><p className="mt-2 font-grotesk text-3xl font-bold text-white">{OPEN_ORDERS.length}</p><p className="mt-1 text-sm text-slate-400">Pending execution</p></Card>
+          <Card className="rounded-xl border-border bg-card p-5 shadow-lg transition-colors hover:border-primary/35"><p className="font-grotesk text-xs font-bold uppercase tracking-wider text-slate-400">Selected Pair</p><p className="mt-2 font-grotesk text-3xl font-bold text-white">{selectedPair}</p><p className="mt-1 text-sm text-slate-400">{selectedTimeframe.toUpperCase()} timeframe</p></Card>
+        </div>
+
         {/* TOP BAR: Asset Selector & Timeframes */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-4 rounded-xl shadow-lg relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-primary/5 -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-300" />
@@ -257,7 +276,7 @@ export default function Futures() {
 
           {/* RIGHT COLUMN: Trade Panel */}
           <div className="space-y-6 font-grotesk">
-            <Card className="bg-card border-border p-5 sticky top-6 rounded-xl shadow-lg relative overflow-hidden group">
+            <Card className="bg-card border-border p-5 sticky top-24 rounded-xl shadow-lg relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-primary/5 -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-300" />
               <Tabs defaultValue="long" className="w-full relative">
                 <TabsList className="w-full bg-secondary border border-border grid grid-cols-2 mb-6 rounded-xl p-1">
@@ -350,3 +369,4 @@ export default function Futures() {
     </Layout>
   );
 }
+

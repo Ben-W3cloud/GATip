@@ -7,7 +7,7 @@ import {
   Camera, MapPin, Link2, Edit3, Check, X, 
   Wallet, TrendingUp, Activity, Trophy, Mail, Loader2 
 } from 'lucide-react';
-import { Header } from '@/components/Header';
+import { Layout } from '@/components/Layout';
 import { buildUrl } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -186,7 +186,7 @@ export default function Profile() {
     reset();
   };
 
-  if (isUserLoading) return <div className="min-h-screen bg-background"><Header /><ProfileSkeleton /></div>;
+  if (isUserLoading) return <Layout><ProfileSkeleton /></Layout>;
   if (!user) return <div className="min-h-screen bg-background flex items-center justify-center text-red-400">Error loading profile.</div>;
 
   const displayStats = stats || {
@@ -195,8 +195,8 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-white font-sans selection:bg-primary/30">
-      <Header />
+    <Layout>
+      <div className="min-h-screen bg-background text-white font-sans selection:bg-primary/30">
 
       <div className="w-full max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
         
@@ -380,5 +380,7 @@ export default function Profile() {
 
       </div>
     </div>
+    </Layout>
   );
 }
+

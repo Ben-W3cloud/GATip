@@ -100,7 +100,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
+        sans: ["Outfit", "sans-serif"],
         grotesk: ["Space Grotesk", "sans-serif"],
         serif: ["var(--font-serif)"],
         mono: ["var(--font-mono)"],
@@ -123,3 +123,4 @@ export default {
   },
   plugins: [animate as any, typography as any, scrollbar as any],
 } satisfies Config;
+
