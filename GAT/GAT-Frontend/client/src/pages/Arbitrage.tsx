@@ -118,6 +118,9 @@ function useArbitrageScanner(
 
   const wsRef = useRef<WebSocket | null>(null);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const oppBufferRef = useRef<Map<string, Opportunity>>(new Map());
+  const MAX_DISPLAY_OPPS = 20;
 
   const isRunningRef = useRef(isRunning);
   const filtersRef = useRef(filters);
@@ -168,6 +171,27 @@ function useArbitrageScanner(
       clearTimeout(restartTimerRef.current);
       restartTimerRef.current = null;
     }
+  }, []);
+
+  const clearFlushTimer = useCallback(() => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+  }, []);
+
+  const flushBufferedOpps = useCallback(() => {
+    if (oppBufferRef.current.size === 0) {
+      flushTimerRef.current = null;
+      return;
+    }
+
+    const nextOpps = Array.from(oppBufferRef.current.values())
+      .sort((a, b) => b.profit_percent - a.profit_percent)
+      .slice(0, MAX_DISPLAY_OPPS);
+
+    setFoundOpps(nextOpps);
+    flushTimerRef.current = null;
   }, []);
 
   const closeSocket = useCallback((reason: "manual" | "filter" | "error" | "unmount" | "none") => {
@@ -227,29 +251,23 @@ function useArbitrageScanner(
         return;
       }
 
-      const incoming: Opportunity[] = Array.isArray(parsed)
+      const incoming = Array.isArray(parsed)
         ? parsed
-        : parsed.data || parsed.oppurtunities || [];
+        : parsed.data || parsed.oppurtunities || [parsed];
 
       console.log("[WS] Opportunities in message:", incoming.length);
 
-      // mark last update time and merge incoming opportunities
+      // mark last update time and buffer incoming opportunities
       setLastUpdate(Date.now());
 
       if (incoming.length > 0) {
-        setFoundOpps((prev) => {
-          const map = new Map<string, Opportunity>();
-
-          prev.forEach((opp) => {
-            map.set(`${opp.symbol}-${opp.buy_exchange}-${opp.sell_exchange}`, opp);
-          });
-
-          incoming.forEach((opp) => {
-            map.set(`${opp.symbol}-${opp.buy_exchange}-${opp.sell_exchange}`, opp);
-          });
-
-          return Array.from(map.values());
+        incoming.forEach((opp) => {
+          oppBufferRef.current.set(`${opp.symbol}-${opp.buy_exchange}-${opp.sell_exchange}`, opp);
         });
+
+        if (!flushTimerRef.current) {
+          flushTimerRef.current = window.setTimeout(flushBufferedOpps, 250);
+        }
       }
     };
 
@@ -278,6 +296,7 @@ function useArbitrageScanner(
 
       if (reason === "manual") {
         console.log("[WS] Manual stop complete.");
+        clearFlushTimer();
         return;
       }
 
@@ -288,6 +307,7 @@ function useArbitrageScanner(
 
       if (reason === "unmount") {
         console.log("[WS] Unmount cleanup complete.");
+        clearFlushTimer();
         return;
       }
 
@@ -390,6 +410,8 @@ function useArbitrageScanner(
     if (isRunningRef.current) {
       console.log("[WS] User stopped the scanner.");
       clearRestartTimer();
+      clearFlushTimer();
+      oppBufferRef.current.clear();
       setIsRestarting(false);
       setIsRunning(false);
       closeSocket("manual");
@@ -399,9 +421,11 @@ function useArbitrageScanner(
     console.log("[WS] User started the scanner.");
     closeReasonRef.current = "none";
     setFoundOpps([]);
+    oppBufferRef.current.clear();
+    clearFlushTimer();
     setIsRestarting (false);
     setIsRunning(true);
-  }, [clearRestartTimer, closeSocket]);
+  }, [clearRestartTimer, clearFlushTimer, closeSocket]);
 
   return {
     isRunning,
@@ -425,7 +449,7 @@ export default function Arbitrage() {
   const queryClient     = useQueryClient();
   const [activeWallet, setActiveWallet] = useState<"arb" | "forex" | "fut">("arb");
 
-  // ── REST QUERIES ─────────────────────────────────────────
+  //─ REST QUERIES ─────────────────────────────────────────
   const { data: userInfo, isLoading: userLoading } = useQuery<UserInfo>({
     queryKey: ["/auth/user-info"],
     queryFn:  authenticatedFetcher,
@@ -479,7 +503,7 @@ export default function Arbitrage() {
   });
   const manualTradeForm = useForm<TradeFormValues>({ resolver: zodResolver(TradeSchema) });
 
-  // ── MUTATIONS ────────────────────────────────────────────
+  //─ MUTATIONS ────────────────────────────────────────────
   const tradeMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await fetch(buildUrl("/arb/perform-arb-trade"), {
@@ -795,7 +819,7 @@ export default function Arbitrage() {
                                 ${opp.buy_price} / ${opp.sell_price}
                               </td>
                               <td className="p-4 text-right font-700 text-green-400">
-                                +{(opp.profit_percent)}%
+                                +{(opp.profit_percent * 100).toFixed(2)}%
                               </td>
                               <td className="p-4 text-right">
                                 <Button
