@@ -49,3 +49,17 @@ export function formatCompactNumber(number: number) {
     maximumFractionDigits: 1,
   }).format(number)
 }
+
+// 6. PnL class helper
+// Returns a Tailwind text color class depending on pnl sign
+export function pnlClass(value: number | null | undefined) {
+  if (value == null) return "text-slate-300";
+  return value >= 0 ? "text-green-400" : "text-destructive";
+}
+
+// 7. Format PnL currency with sign and configurable decimals
+export function formatPnl(value: number | null | undefined, decimals = 2) {
+  if (value == null) return "---";
+  const abs = Math.abs(value).toFixed(decimals);
+  return value >= 0 ? `+$${abs}` : `-$${abs}`;
+}

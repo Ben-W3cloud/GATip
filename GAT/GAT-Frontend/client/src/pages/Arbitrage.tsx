@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { pnlClass, formatPnl } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 // ──────────────────────────────────────────────────────────────
@@ -180,6 +181,21 @@ function useArbitrageScanner(
     }
   }, []);
 
+  const normalizeOpportunity = (raw: any): Opportunity => {
+    const profitPercent = Number(
+      raw.profit_percent ?? raw.profitPercent ?? raw.profit ?? 0
+    );
+
+    return {
+      symbol: String(raw.symbol ?? raw.pair ?? raw.symbol_name ?? "").trim(),
+      buy_exchange: String(raw.buy_exchange ?? raw.buyExchange ?? raw.buy ?? "").trim(),
+      sell_exchange: String(raw.sell_exchange ?? raw.sellExchange ?? raw.sell ?? "").trim(),
+      buy_price: Number(raw.buy_price ?? raw.buyPrice ?? raw.buy_price ?? 0),
+      sell_price: Number(raw.sell_price ?? raw.sellPrice ?? raw.sell_price ?? 0),
+      profit_percent: Number.isFinite(profitPercent) ? profitPercent : 0,
+    };
+  };
+
   const flushBufferedOpps = useCallback(() => {
     if (oppBufferRef.current.size === 0) {
       flushTimerRef.current = null;
@@ -253,7 +269,7 @@ function useArbitrageScanner(
 
       const incoming = Array.isArray(parsed)
         ? parsed
-        : parsed.data || parsed.oppurtunities || [parsed];
+        : parsed.data || parsed.opportunities || parsed.oppurtunities || [parsed];
 
       console.log("[WS] Opportunities in message:", incoming.length);
 
@@ -261,8 +277,21 @@ function useArbitrageScanner(
       setLastUpdate(Date.now());
 
       if (incoming.length > 0) {
-        incoming.forEach((opp) => {
-          oppBufferRef.current.set(`${opp.symbol}-${opp.buy_exchange}-${opp.sell_exchange}`, opp);
+        const normalized = incoming
+          .map((opp: any) => normalizeOpportunity(opp))
+          .filter(
+            (opp: Opportunity) =>
+              opp.symbol &&
+              opp.buy_exchange &&
+              opp.sell_exchange &&
+              Number.isFinite(opp.profit_percent)
+          );
+
+        normalized.forEach((opp: Opportunity) => {
+          oppBufferRef.current.set(
+            `${opp.symbol}-${opp.buy_exchange}-${opp.sell_exchange}`,
+            opp
+          );
         });
 
         if (!flushTimerRef.current) {
@@ -819,7 +848,9 @@ export default function Arbitrage() {
                                 ${opp.buy_price} / ${opp.sell_price}
                               </td>
                               <td className="p-4 text-right font-700 text-green-400">
-                                +{(opp.profit_percent * 100).toFixed(2)}%
+                                {Number.isFinite(opp.profit_percent)
+                                  ? `+${(opp.profit_percent * 100).toFixed(3)}%`
+                                  : "N/A"}
                               </td>
                               <td className="p-4 text-right">
                                 <Button
@@ -948,8 +979,8 @@ export default function Arbitrage() {
                             <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold">
                               Qty: {t.qty > 0 ? t.qty : "---"}
                             </Badge>
-                            <p className="text-xs font-mono font-700 mt-2 text-slate-300">
-                              {t.realized_profit != null ? `$${t.realized_profit}` : "---"}
+                            <p className={`text-xs font-mono font-700 mt-2 ${pnlClass(t.realized_profit)}`}>
+                              {t.realized_profit != null ? formatPnl(t.realized_profit, 2) : "---"}
                             </p>
                           </div>
                         </div>
@@ -976,7 +1007,9 @@ export default function Arbitrage() {
                 <span>
                   Spread:{" "}
                   <span className="text-green-400 font-bold">
-                    {(selectedOpp.profit_percent * 100).toFixed(2)}%
+                    {Number.isFinite(selectedOpp.profit_percent)
+                      ? `+${(selectedOpp.profit_percent * 100).toFixed(3)}%`
+                      : "N/A"}
                   </span>
                 </span>
                 <span className="text-slate-350">Price: ${selectedOpp.buy_price}</span>
