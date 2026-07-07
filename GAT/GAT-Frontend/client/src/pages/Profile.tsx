@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { buildUrl } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, pnlClass, formatPnl } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 
 // --- TYPES ---
@@ -100,7 +100,7 @@ export default function Profile() {
   // Calculate stats from user data
   const stats = user ? {
     totalBalance: `$${((user.balance_arb || 0) + (user.balance_forex || 0) + (user.balance_fut || 0)).toLocaleString()}`,
-    todayPnL: user.total_pl ? (user.total_pl >= 0 ? `+$${user.total_pl.toFixed(2)}` : `-$${Math.abs(user.total_pl).toFixed(2)}`) : '$0.00',
+    todayPnL: formatPnl(user.total_pl, 2),
     todayPnLPercent: '0%', // This might need to be calculated differently
     activeTrades: user.active_trades || 0,
     newTrades: 0, // This might not be available
@@ -346,7 +346,7 @@ export default function Profile() {
             label="Today's P&L"
             value={displayStats.todayPnL}
             icon={TrendingUp}
-            colorClass="border-primary/25 from-primary/10 to-transparent"
+            colorClass={pnlClass(user?.total_pl)}
             subValue={<span className="text-primary text-sm font-semibold font-grotesk glow-text">+{displayStats.todayPnLPercent}</span>}
           />
 

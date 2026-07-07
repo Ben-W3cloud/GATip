@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { buildUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { pnlClass, formatPnl } from "@/lib/utils";
 
 interface UserInfo {
   status: string;
@@ -151,7 +152,7 @@ function TradeRow({ trade }: { trade: Trade }) {
         <p className="font-grotesk text-sm font-bold text-white">{trade.symbol}</p>
         <p className="text-xs text-slate-500">{trade.side} - {trade.status}</p>
       </div>
-      <p className={cn("font-mono text-sm font-bold", pnl >= 0 ? "text-green-400" : "text-destructive")}>{pnl >= 0 ? "+" : ""}{formatCurrency(pnl)}</p>
+      <p className={cn("font-mono text-sm font-bold", pnlClass(pnl))}>{formatPnl(pnl, 2)}</p>
     </div>
   );
 }
