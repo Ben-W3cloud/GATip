@@ -110,6 +110,7 @@ function useArbitrageScanner(
   const [isRunning, setIsRunning] = useState(false);
   const [minProfit, setMinProfit] = useState(0.00001);
   const [foundOpps, setFoundOpps] = useState<Opportunity[]>([]);
+  const [priceFlashKeys, setPriceFlashKeys] = useState<Set<string>>(new Set());
   const [isRestarting, setIsRestarting] = useState(false);
 
   const [filters, setFilters] = useState({
@@ -120,7 +121,9 @@ function useArbitrageScanner(
   const wsRef = useRef<WebSocket | null>(null);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const priceFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const oppBufferRef = useRef<Map<string, Opportunity>>(new Map());
+  const displayedOppsRef = useRef<Opportunity[]>([]);
   const MAX_DISPLAY_OPPS = 20;
 
   const isRunningRef = useRef(isRunning);
@@ -181,6 +184,16 @@ function useArbitrageScanner(
     }
   }, []);
 
+  const clearPriceFlashTimer = useCallback(() => {
+    if (priceFlashTimerRef.current) {
+      clearTimeout(priceFlashTimerRef.current);
+      priceFlashTimerRef.current = null;
+    }
+  }, []);
+
+  const getOpportunityKey = (opp: Opportunity) =>
+    `${opp.symbol}-${opp.buy_exchange}-${opp.sell_exchange}`;
+
   const normalizeOpportunity = (raw: any): Opportunity => {
     const profitPercent = Number(
       raw.profit_percent ?? raw.profitPercent ?? raw.profit ?? 0
@@ -206,9 +219,35 @@ function useArbitrageScanner(
       .sort((a, b) => b.profit_percent - a.profit_percent)
       .slice(0, MAX_DISPLAY_OPPS);
 
-    setFoundOpps(nextOpps);
+    setFoundOpps((prevOpps) => {
+      const previousByKey = new Map(
+        prevOpps.map((opp) => [getOpportunityKey(opp), opp])
+      );
+
+      const changedKeys = nextOpps
+        .filter((opp) => {
+          const previous = previousByKey.get(getOpportunityKey(opp));
+          return (
+            previous &&
+            (previous.buy_price !== opp.buy_price ||
+              previous.sell_price !== opp.sell_price)
+          );
+        })
+        .map(getOpportunityKey);
+
+      if (changedKeys.length > 0) {
+        setPriceFlashKeys(new Set(changedKeys));
+        clearPriceFlashTimer();
+        priceFlashTimerRef.current = window.setTimeout(() => {
+          setPriceFlashKeys(new Set());
+          priceFlashTimerRef.current = null;
+        }, 1200);
+      }
+
+      return nextOpps;
+    });
     flushTimerRef.current = null;
-  }, []);
+  }, [clearPriceFlashTimer]);
 
   const closeSocket = useCallback((reason: "manual" | "filter" | "error" | "unmount" | "none") => {
     closeReasonRef.current = reason;
@@ -326,6 +365,8 @@ function useArbitrageScanner(
       if (reason === "manual") {
         console.log("[WS] Manual stop complete.");
         clearFlushTimer();
+        clearPriceFlashTimer();
+        setPriceFlashKeys(new Set());
         return;
       }
 
@@ -337,6 +378,8 @@ function useArbitrageScanner(
       if (reason === "unmount") {
         console.log("[WS] Unmount cleanup complete.");
         clearFlushTimer();
+        clearPriceFlashTimer();
+        setPriceFlashKeys(new Set());
         return;
       }
 
@@ -355,7 +398,7 @@ function useArbitrageScanner(
         variant: "destructive",
       });
     };
-  }, [clearRestartTimer, toast]);
+  }, [clearRestartTimer, clearPriceFlashTimer, toast]);
 
   useEffect(() => {
     if (isRunning) {
@@ -440,7 +483,10 @@ function useArbitrageScanner(
       console.log("[WS] User stopped the scanner.");
       clearRestartTimer();
       clearFlushTimer();
+      clearPriceFlashTimer();
       oppBufferRef.current.clear();
+      displayedOppsRef.current = [];
+      setPriceFlashKeys(new Set());
       setIsRestarting(false);
       setIsRunning(false);
       closeSocket("manual");
@@ -450,11 +496,14 @@ function useArbitrageScanner(
     console.log("[WS] User started the scanner.");
     closeReasonRef.current = "none";
     setFoundOpps([]);
+    displayedOppsRef.current = [];
+    setPriceFlashKeys(new Set());
     oppBufferRef.current.clear();
     clearFlushTimer();
+    clearPriceFlashTimer();
     setIsRestarting (false);
     setIsRunning(true);
-  }, [clearRestartTimer, clearFlushTimer, closeSocket]);
+  }, [clearRestartTimer, clearFlushTimer, clearPriceFlashTimer, closeSocket]);
 
   return {
     isRunning,
@@ -463,6 +512,7 @@ function useArbitrageScanner(
     minProfit,
     setMinProfit,
     foundOpps,
+    priceFlashKeys,
     filters,
     setFilters,
     lastUpdate,
@@ -836,15 +886,19 @@ export default function Arbitrage() {
                             </td>
                           </tr>
                         ) : (
-                          scanner.foundOpps.map((opp, idx) => (
-                            <tr key={idx} className="hover:bg-secondary/20 transition-colors">
+                          scanner.foundOpps.map((opp, idx) => {
+                            const opportunityKey = `${opp.symbol}-${opp.buy_exchange}-${opp.sell_exchange}`;
+                            const priceChanged = scanner.priceFlashKeys.has(opportunityKey);
+
+                            return (
+                            <tr key={opportunityKey || idx} className="hover:bg-secondary/20 transition-colors">
                               <td className="p-4 font-700 text-white">{opp.symbol}</td>
                               <td className="p-4 text-sm font-semibold">
                                 <span className="text-primary font-bold">{opp.buy_exchange}</span>
                                 <span className="mx-2 text-slate-500">→</span>
                                 <span className="text-primary/70">{opp.sell_exchange}</span>
                               </td>
-                              <td className="p-4 text-right font-mono text-xs text-slate-300">
+                              <td className={`p-4 text-right font-mono text-xs transition-colors duration-300 ${priceChanged ? "text-primary" : "text-white"}`}>
                                 ${opp.buy_price} / ${opp.sell_price}
                               </td>
                               <td className="p-4 text-right font-700 text-green-400">
@@ -862,7 +916,8 @@ export default function Arbitrage() {
                                 </Button>
                               </td>
                             </tr>
-                          ))
+                            );
+                          })
                         )}
                       </tbody>
                     </table>
@@ -1232,3 +1287,5 @@ const FilterContent = ({
     </div>
   );
 };
+
+
