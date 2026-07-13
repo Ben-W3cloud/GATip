@@ -196,7 +196,12 @@ function useArbitrageScanner(
 
   const normalizeOpportunity = (raw: any): Opportunity => {
     const profitPercent = Number(
-      raw.profit_percent ?? raw.profitPercent ?? raw.profit ?? 0
+      raw.net_profit_percent ??
+        raw.profit_percent ??
+        raw.profitPercent ??
+        raw.gross_profit_percent ??
+        raw.profit ??
+        0
     );
 
     return {
@@ -901,9 +906,9 @@ export default function Arbitrage() {
                               <td className={`p-4 text-right font-mono text-xs transition-colors duration-300 ${priceChanged ? "text-primary" : "text-white"}`}>
                                 ${opp.buy_price} / ${opp.sell_price}
                               </td>
-                              <td className="p-4 text-right font-700 text-green-400">
+                              <td className={`p-4 text-right font-700 ${opp.profit_percent >= 0 ? "text-green-400" : "text-red-500"}`}>
                                 {Number.isFinite(opp.profit_percent)
-                                  ? `+${(opp.profit_percent * 100).toFixed(3)}%`
+                                  ? `${opp.profit_percent >= 0 ? "+" : ""}${opp.profit_percent.toFixed(4)}%`
                                   : "N/A"}
                               </td>
                               <td className="p-4 text-right">
@@ -1061,9 +1066,9 @@ export default function Arbitrage() {
               <div className="flex justify-between text-xs bg-secondary/55 p-3 rounded-lg border border-border/40 font-bold">
                 <span>
                   Spread:{" "}
-                  <span className="text-green-400 font-bold">
+                  <span className={`font-bold ${selectedOpp.profit_percent >= 0 ? "text-green-400" : "text-red-500"}`}>
                     {Number.isFinite(selectedOpp.profit_percent)
-                      ? `+${(selectedOpp.profit_percent * 100).toFixed(3)}%`
+                      ? `${selectedOpp.profit_percent >= 0 ? "+" : ""}${selectedOpp.profit_percent.toFixed(4)}%`
                       : "N/A"}
                   </span>
                 </span>
