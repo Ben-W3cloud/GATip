@@ -108,7 +108,7 @@ function useArbitrageScanner(
   const { toast } = useToast();
 
   const [isRunning, setIsRunning] = useState(false);
-  const [minProfit, setMinProfit] = useState(0.00001);
+  const [minProfit, setMinProfit] = useState(0.001);
   const [foundOpps, setFoundOpps] = useState<Opportunity[]>([]);
   const [priceFlashKeys, setPriceFlashKeys] = useState<Set<string>>(new Set());
   const [isRestarting, setIsRestarting] = useState(false);
@@ -909,7 +909,7 @@ export default function Arbitrage() {
                               <td className={`p-4 text-right font-700 ${opp.profit_percent >= 0 ? "text-green-400" : "text-red-500"}`}>
                                 {Number.isFinite(opp.profit_percent)
                                   ? `${opp.profit_percent >= 0 ? "+" : ""}${opp.profit_percent.toFixed(4)}%`
-                                  : "N/A"}
+                                 : "N/A"}
                               </td>
                               <td className="p-4 text-right">
                                 <Button
